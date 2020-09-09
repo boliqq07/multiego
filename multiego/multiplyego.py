@@ -18,6 +18,23 @@ warnings.filterwarnings("ignore")
 
 
 def search_space(*arg):
+    """
+
+    Parameters
+    ----------
+    arg: list of np.ndarray
+        Examples:
+            arg = [
+            np.arange(0.1,0.35,0.1),
+            np.arange(0.1, 2.1, 0.5),
+            np.arange(0,1.3,0.3),
+            np.array([0.5,1,1.2,1.3]),]
+
+    Returns
+    -------
+    np.ndarray
+
+    """
     meshes = np.meshgrid(*arg)
     meshes = [_.ravel() for _ in meshes]
     meshes = np.array(meshes).T
@@ -26,10 +43,60 @@ def search_space(*arg):
 
 class MutilplyEgo:
     """
-    EFO
+    EGO (Efficient global optimization).
+    References:
+        Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
+        Global Optim. 13, 455–492 (1998)
+    Examples:
+
+        searchspace_list = [
+            np.arange(0.1,0.35,0.1),
+            np.arange(0.1, 1.3, 0.3),
+            np.arange(0.1, 2.1, 0.5),
+            np.arange(0,1.3,0.3),
+            np.arange(0,7.5,1.5),
+            np.arange(0,7.5,1.5),
+            np.arange(800, 1300, 50),
+            np.arange(200, 600, 40),
+            np.array([20, 80, 138, 250]),]
+
+        searchspace = search_space(*searchspace_list)
+
+        me = MutilplyEgo(searchspace, X, y, 500, [svr, gpr], n_jobs=8)
+
+        me.fit()
+
+        Ei = me.CalculateEi()
+
+        select_number = me.Rank()
+
+        a = searchspace[select_number]
+
     """
 
-    def __init__(self, searchspace, X, y, number, regclf, feature_slice=None, n_jobs=2):
+    def __init__(self, searchspace, X, y, regclf, number=1000,  feature_slice=None, n_jobs=2):
+        """
+
+        Parameters
+        ----------
+        searchspace:np.ndarray
+            custom or generate by .search_space() function.
+        X: np.ndarray
+            X data (2D).
+        y: np.ndarray
+            y data (2D).
+        number:int>100
+            repeat number,default is 1000.
+        regclf: None, list of callable
+            sklearn methods, with "fit" and "predict".
+            The same number with the number of target y.
+        feature_slice: None,list of tuple
+            The same number with the number of target y,
+            and the tuple contains the features for regclf.
+        n_jobs:int
+            parallelize number.
+        """
+
         self.n_jobs = n_jobs
         check_array(X, ensure_2d=True, force_all_finite=True)
         check_array(y, ensure_2d=True, force_all_finite=True)
@@ -85,7 +152,20 @@ class MutilplyEgo:
         # print(data_predict.shape)
         return data_predict
 
-    def Fit(self, regclf_number=None):
+    def fit(self, regclf_number=None):
+        """
+
+        Parameters
+        ----------
+        regclf_number: int,list
+
+            the running sklearn methods, default is all of regclf.
+
+        Returns
+        -------
+        meanandstd: np.ndarray
+             mean and std predicted y value with number(1000).
+        """
 
         if regclf_number is None:
             contain = list(range(self.dim))
@@ -185,6 +265,7 @@ class MutilplyEgo:
         return dmin3
 
     def CalculateEi(self):
+        """EI value"""
         self.CalculatePi()
         self.CalculateL()
         Ei = self.L * self.Pi
@@ -192,6 +273,7 @@ class MutilplyEgo:
         return Ei
 
     def CalculatePi(self):
+        """PI value"""
         njobs = self.n_jobs
         front_y = self.pareto_front_point()
         front_y = self.y[front_y, :].T
@@ -215,6 +297,7 @@ class MutilplyEgo:
         return pi
 
     def Rank(self, top=10000):
+        """top n result"""
         bianhao = np.arange(0, self.searchspace.shape[0])
         result1 = np.column_stack((bianhao, self.searchspace, *self.meanandstd_all, self.Pi, self.L, self.Ei))
         max_paixu = np.argsort(-result1[:, -1])
@@ -261,7 +344,7 @@ class MutilplyEgo:
 #     searchspace1 = pca.transform(searchspace0)
 #     searchspace1 = scalar.transform(searchspace1)
 #     me = MutilplyEgo(searchspace1, X, y, 500, [svr, svr_el], feature_slice=None, n_jobs=20)
-#     meanandstd = me.Fit()
+#     meanandstd = me.fit()
 #     Ei = me.CalculateEi()
 #     select_number = me.Rank()
 #     a = searchspace0[select_number]
