@@ -70,7 +70,9 @@ class MutilplyEgo:
 
         select_number = me.Rank()
 
-        a = searchspace[select_number]
+        result = searchspace[select_number]
+        # or
+        result = self.result
 
     """
 

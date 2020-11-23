@@ -17,7 +17,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
 
     name='multiego',
-    version='0.0.01',
+    version='0.0.02',
     keywords=["ego", "multiplyego"],
     description='This is ego method.'
                 'Some of code are non-originality, just copy for use. All the referenced code are marked,'
@@ -43,6 +43,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
 
     packages=find_packages(
