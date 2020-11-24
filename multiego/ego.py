@@ -12,9 +12,9 @@ Created on Sun Jan 28 15:24:10 2018
 @author: ww
 """
 
-import numpy as np
-import sklearn.utils
+import pandas as pd
 import sklearn
+import sklearn.utils
 from mgetool.tool import parallelize
 from scipy import stats
 from sklearn.utils import check_array
@@ -77,8 +77,6 @@ class Ego:
 
         me = Ego(searchspace, X, y, 500, SVR(), n_jobs=8)
 
-        me.fit()
-
         result = me.Rank()
 
     """
@@ -133,8 +131,10 @@ class Ego:
             return predict_data
 
         predict_dataj = parallelize(n_jobs=njobs, func=fit_parllize, iterable=range(self.number))
+        predict_dataj = np.array(predict_dataj).T
 
-        return np.array(predict_dataj).T
+        self.predict_dataj = predict_dataj
+        return predict_dataj
 
     @staticmethod
     def meanandstd(predict_dataj):
@@ -157,26 +157,36 @@ class Ego:
         print('ego is done')
         return ei
 
-    def egosearch(self, rankway="ego", meanstd=None):
+    def egosearch(self, rankway="ego", meanstd=None, return_type="pd", reverse=True):
         """
         Result is 2 dimentions array
         1st column = sequence number,2nd part = your searchspace,3rd part = mean,std,ego,kg,maxp,sequentially.
 
         Parameters
         ----------
-        meanstd:np.ndarray,None
+        reverse:bool
+            sort method.
+
+        return_type:str
+            numpy.ndarray or pandas.DataFrame
+
+        meanstd:np.ndarray, None
 
         rankway : str
             ["ego","kg","maxp","No"]
         """
+
         y = self.y
         searchspace0 = self.searchspace
         if rankway not in ['ego', 'kg', 'maxp', 'no', 'No']:
             print('Don\'t kidding me,checking rankway=what?\a')
         else:
             if meanstd is None:
-                predict_data = self.fit()
-                meanstd = self.meanandstd(predict_data)
+                if hasattr(self, "predict_dataj"):
+                    pass
+                else:
+                    self.fit()
+                meanstd = self.meanandstd(self.predict_dataj)
             else:
                 pass
             result = self.CalculateEi(y, meanstd)
@@ -193,9 +203,17 @@ class Ego:
             elif rankway == "maxp":
                 max_paixu = np.argsort(result1[:, -1])
                 result1 = result1[max_paixu]
+
+            if reverse:
+                result1 = np.flipud(result1)
+            if return_type == "pd":
+                result1 = pd.DataFrame(result1)
+                fea = ["feature%d" % i for i in range(result1.shape[1] - 6)]
+                name = ["number"] + fea + ["mean", "std", "ego", "kg", "maxp"]
+                result1.columns = name
             return result1
 
-    def Rank(self, rankway="ego", meanstd=None):
+    def Rank(self, rankway="ego", meanstd=None, return_type="pd", reverse=True):
         """
         The same as egosearch method.
         Result is 2 dimentions array.
@@ -203,18 +221,23 @@ class Ego:
 
         Parameters
         ----------
+        reverse:bool
+            sort method.
+
+        return_type:str
+            numpy.ndarray or pandas.DataFrame
+
         meanstd:np.ndarray,None
 
         rankway : str
             ["ego","kg","maxp","No"]
         """
-        return self.egosearch(rankway, meanstd=meanstd)
+        return self.egosearch(rankway, meanstd=meanstd, return_type=return_type, reverse=reverse)
 
 
 if __name__ == "__main__":
     from sklearn.datasets import load_boston
     import numpy as np
-    from sklearn.model_selection import GridSearchCV
     from sklearn.svm import SVR
 
     #####model1#####
@@ -222,8 +245,8 @@ if __name__ == "__main__":
     ###
 
     #####model2#####
-    parameters = {'C': [0.1, 1, 10]}
-    model = GridSearchCV(SVR(), parameters)
+    # parameters = {'C': [0.1, 1, 10]}
+    # model = GridSearchCV(SVR(), parameters)
     ###
 
     X, y = load_boston(return_X_y=True)
@@ -237,6 +260,7 @@ if __name__ == "__main__":
     ]
     searchspace = search_space(*searchspace_list)
     #
-    me = Ego(searchspace, X, y, 500, model, n_jobs=6)
 
+    me = Ego(searchspace, X, y, 500, model, n_jobs=6)
+    me.fit()
     re = me.egosearch()

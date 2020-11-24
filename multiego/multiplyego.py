@@ -8,7 +8,7 @@ sample
 import gc
 import warnings
 from collections.abc import Iterable
-
+import pandas as pd
 import numpy as np
 import sklearn.utils
 from mgetool.tool import parallelize
@@ -121,8 +121,6 @@ class MutilplyEgo:
         assert self.dim == len(feature_slice) == self.y.shape[1]
         self.feature_slice = feature_slice
 
-        self.meanandstd_all = []
-        self.predict_y_all = []
         self.Ei = np.zeros_like(searchspace[:, 1])
         self.Pi = np.zeros_like(searchspace[:, 1])
         self.L = np.zeros_like(searchspace[:, 1])
@@ -193,10 +191,9 @@ class MutilplyEgo:
                 meanandstd.append(meanandstd_i)
             else:
                 pass
-        if regclf_number is None:
-            self.meanandstd_all = meanandstd
 
-            self.predict_y_all = np.array(predict_y_all).T
+        self.meanandstd_all = meanandstd
+        self.predict_y_all = np.array(predict_y_all).T
         return meanandstd
 
     def pareto_front_point(self):
@@ -298,13 +295,20 @@ class MutilplyEgo:
         self.Pi = pi
         return pi
 
-    def Rank(self, top=10000):
-        """top n result"""
+    def Rank(self, top=10000, return_type="pd"):
+        """top n result,ranked by EI"""
         bianhao = np.arange(0, self.searchspace.shape[0])
         result1 = np.column_stack((bianhao, self.searchspace, *self.meanandstd_all, self.Pi, self.L, self.Ei))
         max_paixu = np.argsort(-result1[:, -1])
         select_number = max_paixu[:int(max_paixu.size / top)]
         result1 = result1[select_number]
+
+        if return_type == "pd":
+            result1 = pd.DataFrame(result1)
+            fea = ["feature%d" % i for i in range(self.searchspace.shape[1])]
+            meanstds = ["meanstd%d" % i for i in range(sum([i.shape[1] for i in self.meanandstd_all]))]
+            name = ["number"] + fea +meanstds + ["Pi", "L", "Ei"]
+            result1.columns = name
         self.result = result1
         return select_number
 
