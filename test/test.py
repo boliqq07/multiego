@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# @Time    : 2020/11/2 17:49
+# @Time    : 2020/11/25 14:50
 # @Email   : 986798607@qq.com
 # @Software: PyCharm
 # @License: BSD 3-Clause
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     from sklearn.svm import SVR
 
     #####model1#####
-    model = SVR()
+    # model = SVR()
     ###
 
     #####model2#####
@@ -30,10 +30,24 @@ if __name__ == "__main__":
         np.array([0, 1]),
         np.arange(0.4, 0.6, 0.02),
     ]
+
     searchspace = search_space(*searchspace_list)
-    #
-    me = Ego(regclf=model, searchspace = searchspace, X=X, y=y, n_jobs=6)
 
-    re = me.egosearch()
+    spilt = 3 # 1. 划分3部分空间,在内存没有超的情况下，数字越小越好（>2）
+    sps = np.array_split(searchspace,spilt)
 
+    ms = []
 
+    for i in range(spilt): #2 .每一部分空间算出均值方差，然后合并
+
+        me = Ego(regclf=model, searchspace=sps[i], X=X, y=y, number=50, n_jobs=6)
+
+        pre = me.fit()
+        msi = me.meanandstd(pre)
+
+        ms.append(msi)
+
+    ms = np.concatenate(ms, axis=0)
+
+    me = Ego(regclf=model, searchspace = searchspace, X=X, y=y)  # 没什么用，只是需要全searchspace，最后的表格能对齐
+    re = me.egosearch(meanstd=ms) #3 . 用合并的均值方差算EI
