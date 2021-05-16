@@ -11,10 +11,12 @@ Created on Sun Jan 28 15:24:10 2018
 
 @author: ww
 """
+import gc
 
 import numpy as np
-import sklearn.utils
+import pandas as pd
 import sklearn
+import sklearn.utils
 from mgetool.tool import parallelize
 from scipy import stats
 from sklearn.utils import check_array
@@ -30,6 +32,7 @@ print(
 
 def search_space(*arg):
     """
+    Generate grid.
 
     Parameters
     ----------
@@ -77,13 +80,11 @@ class Ego:
 
         me = Ego(searchspace, X, y, 500, SVR(), n_jobs=8)
 
-        me.fit()
-
         result = me.Rank()
 
     """
 
-    def __init__(self, searchspace, X, y, number, regclf, n_jobs=2):
+    def __init__(self, regclf, searchspace=None, X=None, y=None, number=500, n_jobs=2):
         """
         Parameters
         ----------
@@ -94,7 +95,7 @@ class Ego:
         y: np.ndarray
             y data (1D).
         number: int>100
-            Repeat number,default is 1000.
+            Repeat number, default is 500.
         regclf: sklearn.Mode
             sklearn method, with "fit" and "predict".
         n_jobs: int
@@ -102,48 +103,75 @@ class Ego:
         """
 
         self.n_jobs = n_jobs
-        check_array(X, ensure_2d=True, force_all_finite=True)
-        check_array(y, ensure_2d=False, force_all_finite=True)
-        check_array(searchspace, ensure_2d=True, force_all_finite=True)
-        assert X.shape[1] == searchspace.shape[1]
         self.searchspace = searchspace
         self.X = X
         self.y = y
         self.regclf = regclf
-
         self.meanandstd_all = []
         self.predict_y_all = []
         self.number = number
 
-    def fit(self):
-        x = self.X
+    def fit(self, searchspace=None, X=None, y=None, *args):
+        """
+
+        Parameters
+        ----------
+        searchspace: np.ndarray
+            Custom or generate by .search_space() function.
+        X: np.ndarray
+            X data (2D).
+        y: np.ndarray
+            y data (1D).
+
+        """
+        assert hasattr(self.regclf, "fit")
+        assert hasattr(self.regclf, "predict")
+
+        self.searchspace = self.searchspace if searchspace is None else searchspace
+        self.X = self.X if X is None else X
+        self.y = self.y if y is None else y
+        searchspace = self.searchspace
+        X = self.X
         y = self.y
+
         njobs = self.n_jobs
-        searchspace0 = self.searchspace
         regclf0 = self.regclf
-        assert hasattr(regclf0, "fit")
-        assert hasattr(regclf0, "predict")
+        assert searchspace is not None and X is not None and y is not None, "searchspace, X, y should be np.array"
+        check_array(X, ensure_2d=True, force_all_finite=True)
+        check_array(y, ensure_2d=False, force_all_finite=True)
+        check_array(searchspace, ensure_2d=True, force_all_finite=True)
+        assert X.shape[1] == searchspace.shape[1]
 
         def fit_parllize(random_state):
-            data_train, y_train = sklearn.utils.resample(x, y, n_samples=None, replace=True,
+            data_train, y_train = sklearn.utils.resample(X, y, n_samples=None, replace=True,
                                                          random_state=random_state)
             regclf0.fit(data_train, y_train)
-            predict_data = regclf0.predict(searchspace0)
+            predict_data = regclf0.predict(searchspace)
             predict_data.ravel()
             return predict_data
 
         predict_dataj = parallelize(n_jobs=njobs, func=fit_parllize, iterable=range(self.number))
+        predict_dataj = np.array(predict_dataj).T
 
-        return np.array(predict_dataj).T
+        self.predict_dataj = predict_dataj
 
-    @staticmethod
-    def meanandstd(predict_dataj):
+    def meanandstd(self, predict_dataj=None):
         """calculate meanandstd"""
-        mean = np.mean(predict_dataj, axis=1)
-        std = np.std(predict_dataj, axis=1)
-        data_predict = np.column_stack((mean, std))
-        print(data_predict.shape)
-        return data_predict
+        if predict_dataj is not None:
+            self.predict_dataj = predict_dataj
+        if not hasattr(self, "predict_dataj"):
+            raise NotImplemented("Please fit first")
+        if self.predict_dataj is None:
+            raise NotImplemented("Please fit first")
+
+        mean = np.mean(self.predict_dataj, axis=1)
+        std = np.std(self.predict_dataj, axis=1)
+
+        del self.predict_dataj
+        gc.collect()
+
+        self.ms = np.column_stack((mean, std))
+        return self.ms
 
     @staticmethod
     def CalculateEi(y, meanstd0):
@@ -157,31 +185,43 @@ class Ego:
         print('ego is done')
         return ei
 
-    def egosearch(self, rankway="ego", meanstd=None):
+    def egosearch(self, rankway="ego", meanstd=None, return_type="pd", reverse=True):
         """
         Result is 2 dimentions array
         1st column = sequence number,2nd part = your searchspace,3rd part = mean,std,ego,kg,maxp,sequentially.
 
         Parameters
         ----------
-        meanstd:np.ndarray,None
+        reverse:bool
+            sort method.
+
+        return_type:str
+            numpy.ndarray or pandas.DataFrame
+
+        meanstd:np.ndarray, None
 
         rankway : str
             ["ego","kg","maxp","No"]
         """
+
         y = self.y
-        searchspace0 = self.searchspace
+
         if rankway not in ['ego', 'kg', 'maxp', 'no', 'No']:
             print('Don\'t kidding me,checking rankway=what?\a')
         else:
             if meanstd is None:
-                predict_data = self.fit()
-                meanstd = self.meanandstd(predict_data)
+                if hasattr(self, "ms"):
+                    meanstd = self.ms
+                elif hasattr(self, "predict_dataj"):
+                    meanstd = self.meanandstd()
+                else:
+                    self.fit()
+                    meanstd = self.meanandstd()
             else:
                 pass
             result = self.CalculateEi(y, meanstd)
             bianhao = np.arange(0, len(result))
-            result1 = np.column_stack((bianhao, searchspace0, result))
+            result1 = np.column_stack((bianhao, self.searchspace, result))
             if rankway == "No" or "no":
                 pass
             if rankway == "ego":
@@ -193,9 +233,17 @@ class Ego:
             elif rankway == "maxp":
                 max_paixu = np.argsort(result1[:, -1])
                 result1 = result1[max_paixu]
+
+            if reverse:
+                result1 = np.flipud(result1)
+            if return_type == "pd":
+                result1 = pd.DataFrame(result1)
+                fea = ["feature%d" % i for i in range(result1.shape[1] - 6)]
+                name = ["number"] + fea + ["mean", "std", "ego", "kg", "maxp"]
+                result1.columns = name
             return result1
 
-    def Rank(self, rankway="ego", meanstd=None):
+    def Rank(self, rankway="ego", meanstd=None, return_type="pd", reverse=True):
         """
         The same as egosearch method.
         Result is 2 dimentions array.
@@ -203,40 +251,45 @@ class Ego:
 
         Parameters
         ----------
+        reverse:bool
+            sort method.
+
+        return_type:str
+            numpy.ndarray or pandas.DataFrame
+
         meanstd:np.ndarray,None
 
         rankway : str
             ["ego","kg","maxp","No"]
         """
-        return self.egosearch(rankway, meanstd=meanstd)
+        return self.egosearch(rankway, meanstd=meanstd, return_type=return_type, reverse=reverse)
 
-
-if __name__ == "__main__":
-    from sklearn.datasets import load_boston
-    import numpy as np
-    from sklearn.model_selection import GridSearchCV
-    from sklearn.svm import SVR
-
-    #####model1#####
-    model = SVR()
-    ###
-
-    #####model2#####
-    parameters = {'C': [0.1, 1, 10]}
-    model = GridSearchCV(SVR(), parameters)
-    ###
-
-    X, y = load_boston(return_X_y=True)
-    X = X[:, :5]  # (简化计算，示意)
-    searchspace_list = [
-        np.arange(0.01, 1, 0.1),
-        np.array([0, 20, 30, 50, 70, 90]),
-        np.arange(1, 10, 1),
-        np.array([0, 1]),
-        np.arange(0.4, 0.6, 0.02),
-    ]
-    searchspace = search_space(*searchspace_list)
-    #
-    me = Ego(searchspace, X, y, 500, model, n_jobs=6)
-
-    re = me.egosearch()
+# if __name__ == "__main__":
+#     from sklearn.datasets import load_boston
+#     import numpy as np
+#     from sklearn.svm import SVR
+#
+#     #####model1#####
+#     model = SVR()
+#     ###
+#
+#     #####model2#####
+#     # parameters = {'C': [0.1, 1, 10]}
+#     # model = GridSearchCV(SVR(), parameters)
+#     ###
+#
+#     X, y = load_boston(return_X_y=True)
+#     X = X[:, :5]  # (简化计算，示意)
+#     searchspace_list = [
+#         np.arange(0.01, 1, 0.1),
+#         np.array([0, 20, 30, 50, 70, 90]),
+#         np.arange(1, 10, 1),
+#         np.array([0, 1]),
+#         np.arange(0.4, 0.6, 0.02),
+#     ]
+#     searchspace = search_space(*searchspace_list)
+#     #
+#
+#     me = Ego(model, searchspace, X, y, 500, n_jobs=6)
+#     me.fit()
+#     re = me.egosearch()

@@ -1,6 +1,9 @@
 # Multiply EGO
-EGO and multiply EGO method.
+EGO (Efficient global optimization) and multiply EGO method.
 
+References:
+    Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
+    Global Optim. 13, 455–492 (1998)
 
 [![Python Versions](https://img.shields.io/pypi/pyversions/multiego.svg)](https://pypi.org/project/multiego/)
 [![Version](https://img.shields.io/github/tag/MGEdata/multiego.svg)](https://github.com/MGEdata/multiego/releases/latest)
@@ -20,7 +23,7 @@ if __name__ == "__main__":
     from sklearn.svm import SVR
 
     #####model1#####
-    model = SVR() good model with optimized prarmeters for special features
+    model = SVR() #good model with optimized prarmeters for special features
     ###
 
     X, y = load_boston(return_X_y=True)

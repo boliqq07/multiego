@@ -10,6 +10,7 @@ import warnings
 from collections.abc import Iterable
 
 import numpy as np
+import pandas as pd
 import sklearn.utils
 from mgetool.tool import parallelize
 from sklearn.utils import check_array
@@ -41,7 +42,7 @@ def search_space(*arg):
     return meshes
 
 
-class MutilplyEgo:
+class MultiplyEgo:
     """
     EGO (Efficient global optimization).
     References:
@@ -66,17 +67,13 @@ class MutilplyEgo:
 
         me.fit()
 
-        Ei = me.CalculateEi()
-
         select_number = me.Rank()
 
-        result = searchspace[select_number]
-        # or
         result = self.result
 
     """
 
-    def __init__(self, searchspace, X, y, regclf, number=1000,  feature_slice=None, n_jobs=2):
+    def __init__(self, regclf, searchspace, X, y, number=1000, feature_slice=None, n_jobs=2):
         """
 
         Parameters
@@ -89,7 +86,7 @@ class MutilplyEgo:
             y data (2D).
         number:int>100
             repeat number,default is 1000.
-        regclf: None, list of callable
+        regclf: list of callable
             sklearn methods, with "fit" and "predict".
             The same number with the number of target y.
         feature_slice: None,list of tuple
@@ -101,7 +98,7 @@ class MutilplyEgo:
 
         self.n_jobs = n_jobs
         check_array(X, ensure_2d=True, force_all_finite=True)
-        check_array(y, ensure_2d=True, force_all_finite=True)
+        check_array(y, ensure_2d=False, force_all_finite=True)
         check_array(searchspace, ensure_2d=True, force_all_finite=True)
         assert X.shape[1] == searchspace.shape[1]
         self.searchspace = searchspace
@@ -121,8 +118,6 @@ class MutilplyEgo:
         assert self.dim == len(feature_slice) == self.y.shape[1]
         self.feature_slice = feature_slice
 
-        self.meanandstd_all = []
-        self.predict_y_all = []
         self.Ei = np.zeros_like(searchspace[:, 1])
         self.Pi = np.zeros_like(searchspace[:, 1])
         self.L = np.zeros_like(searchspace[:, 1])
@@ -193,11 +188,10 @@ class MutilplyEgo:
                 meanandstd.append(meanandstd_i)
             else:
                 pass
-        if regclf_number is None:
-            self.meanandstd_all = meanandstd
 
-            self.predict_y_all = np.array(predict_y_all).T
-        return meanandstd
+        self.meanandstd_all = meanandstd
+        self.predict_y_all = np.array(predict_y_all).T
+        return self.meanandstd_all
 
     def pareto_front_point(self):
         sign = self.sign
@@ -244,9 +238,11 @@ class MutilplyEgo:
     #     L_min = np.min(L, axis=0)
     #     spath.L = L_min
 
-    def CalculateL(self):
+    def CalculateL(self, meanandstd_all=None):
         front_y = self.pareto_front_point()
         front_y = self.y[front_y, :].T
+        if meanandstd_all is not None:
+            self.meanandstd_all = meanandstd_all
         meanstd = np.array(self.meanandstd_all)
         meanstd = meanstd[:, :, 0].T
         alll = []
@@ -266,24 +262,22 @@ class MutilplyEgo:
         self.L = dmin3
         return dmin3
 
-    def CalculateEi(self):
+    def CalculateEi(self, meanandstd_all=None, predict_y_all=None):
         """EI value"""
-        self.CalculatePi()
-        self.CalculateL()
+        self.CalculatePi(predict_y_all)
+        self.CalculateL(meanandstd_all)
         Ei = self.L * self.Pi
         self.Ei = Ei
         return Ei
 
-    def CalculatePi(self):
+    def CalculatePi(self, predict_y_all=None):
         """PI value"""
+        if predict_y_all is not None:
+            self.predict_y_all = predict_y_all
+
         njobs = self.n_jobs
         front_y = self.pareto_front_point()
         front_y = self.y[front_y, :].T
-
-        predict_y_all = self.predict_y_all
-
-        del self.predict_y_all
-        gc.collect()
 
         def tile_func(i, front_y0):
             tile = 0
@@ -293,60 +287,56 @@ class MutilplyEgo:
                 tile |= big_bool
             return tile
 
-        tile_all = parallelize(n_jobs=njobs, func=tile_func, iterable=predict_y_all, front_y=front_y)
+        tile_all = parallelize(n_jobs=njobs, func=tile_func, iterable=self.predict_y_all, front_y0=front_y)
         pi = np.sum(1 - np.array(tile_all), axis=1) / self.number
         self.Pi = pi
+
         return pi
 
-    def Rank(self, top=10000):
-        """top n result"""
+    def Rank(self, fraction=1000, return_type="pd", predict_y_all=None, meanandstd_all=None):
+        """
+
+        Parameters
+        ----------
+        fraction: int
+            choice top n_sample/fraction
+        return_type:str
+
+            numpy.ndarray or pandas.DataFrame
+
+        meanandstd_all:np.ndarray, None
+
+        predict_y_all：np.ndarray
+
+        Returns
+        -------
+        rank
+        """
+        if predict_y_all is not None:
+            self.predict_y_all = predict_y_all
+        if meanandstd_all is not None:
+            self.meanandstd_all = meanandstd_all
         bianhao = np.arange(0, self.searchspace.shape[0])
+        if hasattr(self, 'meanandstd_all') and hasattr(self, 'predict_y_all'):
+            self.CalculateEi(self.meanandstd_all, self.predict_y_all)
+        else:
+            self.fit()
+            self.CalculateEi(self.meanandstd_all, self.predict_y_all)
+
+        del self.predict_y_all
+        gc.collect()
+
         result1 = np.column_stack((bianhao, self.searchspace, *self.meanandstd_all, self.Pi, self.L, self.Ei))
         max_paixu = np.argsort(-result1[:, -1])
-        select_number = max_paixu[:int(max_paixu.size / top)]
+        select_number = max_paixu[:int(max_paixu.size / fraction)]
         result1 = result1[select_number]
-        self.result = result1
-        return select_number
 
-# if __name__ == '__main__':
-#     import numpy as np
-#     import pandas as pd
-#     from sklearn.decomposition import PCA
-#     from sklearn.preprocessing import StandardScaler
-#     import os
-#
-#     warnings.filterwarnings("ignore")
-#
-#     os.chdir(r'C:\Users\scc\Desktop\lmx')
-#     svr = joblib.load(r'SVR')
-#     svr_el = joblib.load(r'svr-EL')
-#     file_path = r'C:\Users\scc\Desktop\lmx\UTS-deta.csv'
-#     datamnist = pd.read_csv(file_path)
-#     X = datamnist.iloc[:, :-2].values
-#     y = datamnist.iloc[:, -2:].values
-#
-#     pca = PCA()
-#     X = pca.fit_transform(X)
-#
-#     scalar = StandardScaler()
-#     X = scalar.fit_transform(X)
-#
-#     searchspace = [
-#         np.arange(0.1,0.35,0.1),
-#         np.arange(0.1, 1.3, 0.3),
-#         np.arange(0.1, 2.1, 0.5),
-#         np.arange(0,1.3,0.3),
-#         np.arange(0,7.5,1.5),
-#         np.arange(0,7.5,1.5),
-#         np.arange(800, 1300, 50),
-#         np.arange(200, 600, 40),
-#         np.array([20, 80, 138, 250]),
-#     ]
-#     searchspace0 = search_space(*searchspace)
-#     searchspace1 = pca.transform(searchspace0)
-#     searchspace1 = scalar.transform(searchspace1)
-#     me = MutilplyEgo(searchspace1, X, y, 500, [svr, svr_el], feature_slice=None, n_jobs=20)
-#     meanandstd = me.fit()
-#     Ei = me.CalculateEi()
-#     select_number = me.Rank()
-#     a = searchspace0[select_number]
+        if return_type == "pd":
+            result1 = pd.DataFrame(result1)
+            fea = ["feature%d" % i for i in range(self.searchspace.shape[1])]
+            meanstds = ["meanstd%d" % i for i in range(sum([i.shape[1] for i in self.meanandstd_all]))]
+            name = ["number"] + fea + meanstds + ["Pi", "L", "Ei"]
+            result1.columns = name
+        self.result = result1
+        return self.result
+
