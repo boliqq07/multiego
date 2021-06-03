@@ -5,4 +5,4 @@
 # @Software: PyCharm
 # @License: BSD 3-Clause
 
-__all__ = ["ego", "multiplyego","base_ego"]
+__all__ = ["ego", "multiplyego","base_ego","base_multiplyego"]
