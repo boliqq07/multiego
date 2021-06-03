@@ -51,4 +51,4 @@ if __name__ == "__main__":
     ms = np.concatenate(ms, axis=0)
 
     me = Ego(regclf=model, searchspace=searchspace, X=X, y=y)  # 没什么用，只是需要全searchspace，最后的表格能对齐
-    re = me.egosearch(meanstd=ms)  # 3 . 用合并的均值方差算EI
+    re = me.egosearch(mean_std=ms)  # 3 . 用合并的均值方差算EI

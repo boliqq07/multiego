@@ -34,8 +34,8 @@ if __name__ == "__main__":
 
     searchspace = search_space(*searchspace_list)
 
-    me = MultiplyEgo(regclf=[model1, model1], searchspace = searchspace, X=X, y=y,number=50)  # 没什么用，只是需要全searchspace，最后的表格能对齐
+    me = MultiplyEgo(regclf=[model1, model1], searchspace = searchspace, X=X, y=y,
+                     number=50,n_jobs=6)  # 没什么用，只是需要全searchspace，最后的表格能对齐
     print(1)
-    me.fit()
     print(0)
-    re = me.Rank(fraction=1000) #3 . 用合并的均值方差算EI
+    re = me.rank(fraction=1000) # 3 . 用合并的均值方差算EI

@@ -15,32 +15,30 @@ Notes
 """
 
 import numpy as np
-import sklearn.utils
-import sklearn
-from mgetool.tool import parallelize
-from scipy import stats
-from sklearn.utils import check_array
 
+from scipy import stats
+
+import pandas as pd
 
 class BaseEgo:
     """
     EGO (Efficient global optimization).
 
     References:
-        Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
+        Jones, D. R., Schonlau, M. & Welch, W. J.
+        Efficient global optimization of expensive black-box functions. J.
         Global Optim. 13, 455–492 (1998)
 
     Examples:
 
-        me = Ego()
-
-        result = me.Rank(meanstd=meanstd)
+        >>>me = BaseEgo()
+        >>>result = me.rank(y=y, mean_std=mean_std)
 
     """
 
     @staticmethod
     def meanandstd(predict_dataj):
-        """calculate meanandstd"""
+        """calculate meanandstd."""
         mean = np.mean(predict_dataj, axis=1)
         std = np.std(predict_dataj, axis=1)
         data_predict = np.column_stack((mean, std))
@@ -48,61 +46,79 @@ class BaseEgo:
         return data_predict
 
     @staticmethod
-    def CalculateEi(y, meanstd0):
-        """calculate EI"""
-        ego = (meanstd0[:, 0] - max(y)) / (meanstd0[:, 1])
-        ei_ego = meanstd0[:, 1] * ego * stats.norm.cdf(ego) + meanstd0[:, 1] * stats.norm.pdf(ego)
-        kg = (meanstd0[:, 0] - max(max(meanstd0[:, 0]), max(y))) / (meanstd0[:, 1])
-        ei_kg = meanstd0[:, 1] * kg * stats.norm.cdf(kg) + meanstd0[:, 1] * stats.norm.pdf(kg)
-        max_P = stats.norm.cdf(ego, loc=meanstd0[:, 0], scale=meanstd0[:, 1])
-        ei = np.column_stack((meanstd0, ei_ego, ei_kg, max_P))
-        print('ego is done')
+    def CalculateEi(y, mean_std0):
+        """calculate EI."""
+        ego = (mean_std0[:, 0] - max(y)) / (mean_std0[:, 1])
+        ei_ego = mean_std0[:, 1] * ego * stats.norm.cdf(ego) + mean_std0[:, 1] * stats.norm.pdf(ego)
+        kg = (mean_std0[:, 0] - max(max(mean_std0[:, 0]), max(y))) / (mean_std0[:, 1])
+        ei_kg = mean_std0[:, 1] * kg * stats.norm.cdf(kg) + mean_std0[:, 1] * stats.norm.pdf(kg)
+        max_P = stats.norm.cdf(ego, loc=mean_std0[:, 0], scale=mean_std0[:, 1])
+        ei = np.column_stack((mean_std0, ei_ego, ei_kg, max_P))
+        print('Ego is done')
         return ei
 
-    def egosearch(self, meanstd, rankway="ego", ):
+    def egosearch(self, y, searchspace, mean_std, rankway="ego", return_type="pd", reverse=True):
         """
-        Result is 2 dimentions array
-        1st column = sequence number,2nd part = your searchspace,3rd part = mean,std,ego,kg,maxp,sequentially.
+        Result is 2 dimensions array.
+        1st column = sequence number,\n
+        2nd part = your search space,\n
+        3rd part = mean,std,ego,kg,maxp,sequentially.
 
         Parameters
         ----------
-        meanstd:np.ndarray,None
-
+        y: np.ndarray of shape (n_sample_train, 1)
+            train y
+        mean_std: np.ndarray of shape (n_sample_pre, n_feature)
+            mean_std of n times of prediction on search space.
+            First column is mean and second is std.
         rankway : str
             ["ego","kg","maxp","No"]
+            resort the result by rankway name.
+        searchspace : np.ndarray of shape (n_sample_pre, n_feature)
+            search space
+            ["ego","kg","maxp","No"]
+        return_type: str
+            "pd" or "np"
+        reverse:bool
+            reverse.
+
+        Returns
+        ----------
+        table:np.ndarray (2d), pd.Dateframe
+
         """
-        y = self.y
-        searchspace0 = self.searchspace
         if rankway not in ['ego', 'kg', 'maxp', 'no', 'No']:
             print('Don\'t kidding me,checking rankway=what?\a')
         else:
-            result = self.CalculateEi(y, meanstd)
+            result = self.CalculateEi(y, mean_std)
             bianhao = np.arange(0, len(result))
-            result1 = np.column_stack((bianhao, searchspace0, result))
+            result1 = np.column_stack((bianhao, searchspace, result))
             if rankway == "No" or "no":
                 pass
             if rankway == "ego":
-                egopaixu = np.argsort(result1[:, -3])
+                if reverse:
+                    egopaixu = np.argsort(result1[:, -3])
+                else:
+                    egopaixu = np.argsort(-result1[:, -3])
                 result1 = result1[egopaixu]
             elif rankway == "kg":
-                kgpaixu = np.argsort(result1[:, -2])
+                if reverse:
+                    kgpaixu = np.argsort(result1[:, -2])
+                else:
+                    kgpaixu = np.argsort(-result1[:, -2])
                 result1 = result1[kgpaixu]
             elif rankway == "maxp":
-                max_paixu = np.argsort(result1[:, -1])
+                if reverse:
+                    max_paixu = np.argsort(result1[:, -1])
+                else:
+                    max_paixu = np.argsort(-result1[:, -1])
                 result1 = result1[max_paixu]
-            return result1
-
-    def Rank(self, meanstd, rankway="ego"):
-        """
-        The same as egosearch method.
-        Result is 2 dimentions array.
-        1st column = sequence number,2nd part = your searchspace,3rd part = mean,std,ego,kg,maxp,sequentially.
-
-        Parameters
-        ----------
-        meanstd:np.ndarray
-
-        rankway : str
-            ["ego","kg","maxp","No"]
-        """
-        return self.egosearch(meanstd=meanstd, rankway=rankway)
+            if return_type != "pd":
+                return result1
+            else:
+                result1 = pd.DataFrame(result1)
+                fea = ["feature%d" % i for i in range(searchspace.shape[1])]
+                mean_stds = ["mean_std%d" % i for i in range(mean_std.shape[1])]
+                name = ["number"] + fea + mean_stds + ['ego', 'kg', 'maxp']
+                result1.columns = name
+                return result1

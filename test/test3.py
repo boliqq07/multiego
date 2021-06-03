@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
         me = MultiplyEgo(regclf=[model1,model2], searchspace=sps[i], X=X, y=y, number=50, n_jobs=5)
         me.fit()
-        ms.append(me.meanandstd_all)
+        ms.append(me.mean_std_all)
         pre.append(me.predict_y_all)
 
     ms = list(zip(*ms))
@@ -51,4 +51,4 @@ if __name__ == "__main__":
     #
     pre = np.concatenate(pre, axis=0)
     me = MultiplyEgo(regclf=[model1,model2], searchspace = searchspace, X=X, y=y)  # 没什么用，只是需要全searchspace，最后的表格能对齐
-    re = me.Rank(fraction=1000, predict_y_all=pre, meanandstd_all=ms) #3 . 用合并的均值方差算EI
+    re = me.rank(fraction=1000, predict_y_all=pre, meanandstd_all=ms) #3 . 用合并的均值方差算EI

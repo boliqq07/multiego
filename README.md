@@ -1,5 +1,5 @@
 # Multiply EGO
-EGO (Efficient global optimization) and multiply EGO method.
+EGO (Efficient global optimization) and multiply target EGO method.
 
 References:
     Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
@@ -43,4 +43,5 @@ if __name__ == "__main__":
 ```
 link
 -----------
+More examples can be found in test.
 More powerful can be found  [mipego](https://github.com/wangronin/MIP-EGO)
