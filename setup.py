@@ -17,7 +17,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
 
     name='multiego',
-    version='0.0.06',
+    version='0.0.07',
     keywords=["ego", "multiplyego"],
     description='This is ego method.'
                 'Some of code are non-originality, just copy for use. All the referenced code are marked,'

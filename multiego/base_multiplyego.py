@@ -72,7 +72,7 @@ class BaseMultiplyEgo:
     def pareto_front_point(self, y, sign=None):
         m = y.shape[0]
         n = y.shape[1]
-        if not sign:
+        if sign is None:
             sign = np.array([1] * n)
         y *= sign
         front_point_index = []
