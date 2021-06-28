@@ -22,7 +22,7 @@ if __name__ == "__main__":
     ###
 
     X, y = load_boston(return_X_y=True)
-    X = X[:, :5] #(简化计算，示意)
+    X = X[:, :5]  # (简化计算，示意)
     searchspace_list = [
         np.arange(0.01, 1, 0.1),
         np.array([0, 20, 30, 50, 70, 90]),
@@ -32,8 +32,6 @@ if __name__ == "__main__":
     ]
     searchspace = search_space(*searchspace_list)
     #
-    me = Ego(regclf=model, searchspace = searchspace, X=X, y=y, n_jobs=6)
+    me = Ego(regclf=model, searchspace=searchspace, X=X, y=y, n_jobs=6)
 
-    re = me.egosearch()
-
-
+    re = me.egosearch(flexibility=10)

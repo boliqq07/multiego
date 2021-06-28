@@ -38,4 +38,4 @@ if __name__ == "__main__":
                      number=50,n_jobs=6)  # 没什么用，只是需要全searchspace，最后的表格能对齐
     print(1)
     print(0)
-    re = me.rank(fraction=1000) # 3 . 用合并的均值方差算EI
+    re = me.rank(fraction=1000,flexibility=[20,20]) # 3 . 用合并的均值方差算EI

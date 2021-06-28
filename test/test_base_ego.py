@@ -1,17 +1,17 @@
 import unittest
 
+import numpy as np
 import pandas as pd
 from sklearn.datasets import load_boston
-import numpy as np
-
-from multiego.base_ego import BaseEgo
-from multiego.ego import search_space, Ego
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVR
 
+from multiego.base_ego import BaseEgo
+from multiego.ego import search_space
+
+
 class MyTestCase(unittest.TestCase):
     def setUp(self) -> None:
-
         parameters = {'C': [0.1, 1, 10]}
         model = GridSearchCV(SVR(), parameters)
         ###
@@ -31,14 +31,18 @@ class MyTestCase(unittest.TestCase):
         self.searchspace = searchspace
 
     def test_something(self):
-
-        mean_std = np.random.random((self.searchspace.shape[0],1000))
+        mean_std = np.random.random((self.searchspace.shape[0], 1000))
         be = BaseEgo()
-        rank = be.egosearch(self.y, self.searchspace, mean_std, rankway="ego", return_type="pd")
-        self.assertTrue(isinstance(rank,pd.DataFrame))
-        rank = be.egosearch(self.y, self.searchspace, mean_std, rankway="ego", return_type="np")
-        self.assertTrue(isinstance(rank,np.ndarray))
 
+        try:
+            rank = be.egosearch(self.y, self.searchspace, mean_std, rankway="ego", return_type="pd", flexibility=20)
+
+        except AssertionError:
+            pass
+        try:
+            rank = be.egosearch(self.y, self.searchspace, mean_std, rankway="ego", return_type="pd", flexibility=100)
+        except UserWarning:
+            pass
 
 
 if __name__ == '__main__':

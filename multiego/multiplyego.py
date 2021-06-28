@@ -69,7 +69,7 @@ class MultiplyEgo(BaseMultiplyEgo):
 
     """
 
-    def __init__(self, regclf, searchspace, X, y, number=1000, feature_slice=None, n_jobs=2):
+    def __init__(self, regclf, searchspace, X, y, number=1000, feature_slice=None, n_jobs=2, up=True):
         """
 
         Parameters
@@ -82,7 +82,7 @@ class MultiplyEgo(BaseMultiplyEgo):
             y data (2D).
         number:int>100
             repeat number,default is 1000.
-        regclf: list of callable
+        regclf: List of callable
             sklearn methods, with "fit" and "predict".
             The same number with the number of target y.
         feature_slice: None,list of tuple.
@@ -91,8 +91,8 @@ class MultiplyEgo(BaseMultiplyEgo):
         n_jobs:int
             parallelize number.
         """
-        super(MultiplyEgo, self).__init__(n_jobs=n_jobs)
-        self.rank=self.egosearch
+        super(MultiplyEgo, self).__init__(n_jobs=n_jobs,up=up)
+        self.rank = self.egosearch
 
         check_array(X, ensure_2d=True, force_all_finite=True)
         check_array(y, ensure_2d=False, force_all_finite=True)
@@ -121,6 +121,8 @@ class MultiplyEgo(BaseMultiplyEgo):
         self.front_point = np.zeros_like(self.y[:, 1])
         self.number = number
         self.center = np.zeros_like(searchspace[:, 1])
+        self.rank = self.egosearch
+
 
     def _fit(self, x, y, searchspace0, regclf0):
         def fit_parllize(random_state):
@@ -133,7 +135,7 @@ class MultiplyEgo(BaseMultiplyEgo):
 
         predict_dataj = parallelize(n_jobs=self.n_jobs, func=fit_parllize, iterable=range(self.number))
 
-        return np.array(predict_dataj)
+        return np.array(predict_dataj).T
 
     def fit(self, regclf_number=None):
         """
@@ -176,11 +178,11 @@ class MultiplyEgo(BaseMultiplyEgo):
                 pass
 
         self.mean_std_all = meanandstd
-        self.predict_y_all = np.array(predict_y_all).T
+        self.predict_y_all = np.array(predict_y_all).transpose((1,2,0))
         return self.mean_std_all
 
     def egosearch(self, searchspace=None, fraction=1000, return_type="pd", predict_y_all=None,
-                  meanandstd_all=None,
+                  meanandstd_all=None, flexibility=None,
                   y=None, sign=None):
         """
         Result is 2 dimensions array.
@@ -199,12 +201,16 @@ class MultiplyEgo(BaseMultiplyEgo):
         return_type:str
             numpy.ndarray or pandas.DataFrame
         meanandstd_all: list of np.ndarray
-            n_model meanandstd, Each meanandstd is np.ndarray of shape (n_sample_pre,n_model)
+            Not required force.
+            n_model meanandstd, Each meanandstd is np.ndarray of shape (n_sample_pre,2)
         predict_y_all: np.ndarray of shape (n_sample_pre,n_times,n_model)
             ys.
         sign:np.ndarray of shape (n_model,)
             Each element must be -1 or 1.
             sign to define the max problem or min problem.
+
+        flexibility: List[float]
+            Flexibility to calculate PI, the bigger flexibility, the more search space Pi >0. for each y.
 
         Returns
         ----------
@@ -224,8 +230,8 @@ class MultiplyEgo(BaseMultiplyEgo):
         else:
             self.fit()
 
-        return super().egosearch(y, self.searchspace, self.mean_std_all, self.predict_y_all,
-                                 return_type="pd", fraction=1000, sign=sign)
+        return super().egosearch(y, self.predict_y_all, searchspace= self.searchspace,meanandstd_all= self.mean_std_all,
+                                 return_type="pd", fraction=fraction, flexibility=flexibility, sign=sign)
 
 # #
 # #
@@ -387,14 +393,14 @@ class MultiplyEgo(BaseMultiplyEgo):
 # #         njobs = self.n_jobs
 # #         number = self.number
 # #
-# #         predict_dataj = parallelize(n_jobs=njobs, func=fit_parllize, iterable=range(number))
+# #         predict_y = parallelize(n_jobs=njobs, func=fit_parllize, iterable=range(number))
 # #
-# #         return np.array(predict_dataj)
+# #         return np.array(predict_y)
 # #
 # #     @staticmethod
-# #     def _mean_and_std(predict_dataj):
-# #         mean = np.mean(predict_dataj, axis=0)
-# #         std = np.std(predict_dataj, axis=0)
+# #     def _mean_and_std(predict_y):
+# #         mean = np.mean(predict_y, axis=0)
+# #         std = np.std(predict_y, axis=0)
 # #         data_predict = np.column_stack((mean, std))
 # #         # print(data_predict.shape)
 # #         return data_predict

@@ -12,7 +12,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from mgetool.tool import parallelize
+from mgetool.tool import batch_parallelize
 
 warnings.filterwarnings("ignore")
 
@@ -49,25 +49,37 @@ class BaseMultiplyEgo:
         Global Optim. 13, 455–492 (1998)
     """
 
-    def __init__(self, n_jobs=2):
+    def __init__(self, n_jobs=2, up=True):
         """
 
         Parameters
         ----------
         n_jobs:int
             parallelize number.
+
+        up:bool
+            The pareto front face is going to be up or down for pareto front point.
+
         """
 
         self.n_jobs = n_jobs
         self.rank = self.egosearch
+        self.up = up
 
     @staticmethod
-    def meanandstd(predict_dataj):
-        mean = np.mean(predict_dataj, axis=0)
-        std = np.std(predict_dataj, axis=0)
+    def meanandstd(predict_y):
+        mean = np.mean(predict_y, axis=1)
+        std = np.std(predict_y, axis=1)
         data_predict = np.column_stack((mean, std))
         # print(data_predict.shape)
         return data_predict
+
+    def get_meanandstd_all(self, predict_ys):
+        meanandstd = []
+        for i in range(predict_ys.shape[-1]):
+            meanandstd_i = self.meanandstd(predict_ys[:, :, i])
+            meanandstd.append(meanandstd_i)
+        return meanandstd
 
     def pareto_front_point(self, y, sign=None):
         m = y.shape[0]
@@ -101,44 +113,73 @@ class BaseMultiplyEgo:
 
         dmin3 = np.min(dmin2, axis=1)
 
-        #        dmin3 = np.sqrt(np.sum(dmin2**2,axis=1))
+        # dmin3 = np.sqrt(np.sum(dmin2**2,axis=1)) # another method.
 
         dmin3[np.where(dmin3 < 0)[0]] = 0
 
         self.L = dmin3
         return dmin3
 
-    def CalculateEi(self, y, meanandstd_all=None, predict_y_all=None, sign=None):
+    def CalculateEi(self, y, meanandstd_all=None, predict_y_all=None, sign=None, flexibility=None):
         """EI value"""
+        if flexibility is None:
+            flexibility = np.array(np.zeros((y.shape[1], 1)))
+        else:
+            warnings.warn(
+                "``Flexibility`` means reduction of y boundary, Please use it if you know what you are doing.")
+            flexibility = np.array(flexibility).reshape(-1, 1)
+
         self.pareto_front_point(y, sign)
-        self.CalculatePi(predict_y_all)
+        self.CalculatePi(predict_y_all, flexibility=flexibility)
         self.CalculateL(meanandstd_all)
         Ei = self.L * self.Pi
         self.Ei = Ei
         return Ei
 
-    def CalculatePi(self, predict_y_all):
+    def scrap(self, fp):
+        """This function is add the up step to paretofront face.
+        For the front, the steps can go down or up, we add up to get tighter requirements.
+        """
+        # max problem
+        if fp.shape[0] == 2:
+            fp_index = np.argsort(fp[0, :])
+            fp = fp[:, fp_index]
+            new_fp = np.vstack((fp[0, :][1:], fp[1, :][:-1]))
+
+        else:
+            raise NotImplemented("For multi problem more than 2, we dont implemente up-pareto front face methods.")
+
+        return new_fp
+
+    def CalculatePi(self, predict_y_all, flexibility):
         """PI value"""
 
         njobs = self.n_jobs
-        front_y = self.front_point
 
-        def tile_func(i, front_y0):
+        if self.up:
+            front_y = self.scrap(self.front_point)
+        else:
+            front_y = self.front_point
+
+        front_y -= flexibility
+
+        def tile_func(i):
             tile = 0
-            for front_y_i in front_y0.T:
+            for front_y_i in front_y.T:
                 big = i - front_y_i
                 big_bool = np.max(big, axis=1) < 0
                 tile |= big_bool
             return tile
 
-        tile_all = parallelize(n_jobs=njobs, func=tile_func, iterable=predict_y_all, front_y0=front_y)
+        tile_all = batch_parallelize(n_jobs=njobs, func=tile_func, iterable=predict_y_all, batch_size=100)
         pi = np.sum(1 - np.array(tile_all), axis=1) / predict_y_all.shape[1]
 
         self.Pi = pi
 
         return pi
 
-    def egosearch(self, y, searchspace, meanandstd_all, predict_y_all, return_type="pd", fraction=1000, sign=None):
+    def egosearch(self, y, predict_y_all, meanandstd_all=None, searchspace=None, return_type="pd", flexibility=None,
+                  fraction=1000, sign=None):
         """
         Result is 2 dimensions array.
         1st column = sequence number,\n
@@ -150,31 +191,56 @@ class BaseMultiplyEgo:
         y: np.ndarray of shape (n_sample_train, n_model)
             true train y.
         searchspace : np.ndarray of shape (n_sample_pre, n_feature)
-            search space
+            search space, for base_multiego, searchspace is not used and just as one placeholder.
         fraction: int
             choice top n_sample/fraction
         return_type:str
             numpy.ndarray or pandas.DataFrame
         meanandstd_all: list of np.ndarray
-            n_model meanandstd, Each meanandstd is np.ndarray of shape (n_sample_pre,n_model)
+            Not required force.
+            n_model meanandstd, Each meanandstd is np.ndarray of shape (n_sample_pre,2)
         predict_y_all: np.ndarray of shape (n_sample_pre,n_times,n_model)
             ys.
         sign:np.ndarray of shape (n_model,)
             Each element must be -1 or 1.
             sign to define the max problem or min problem.
 
+        flexibility: List[float]
+            Flexibility to calculate PI, the bigger flexibility, the more search space Pi >0. for each y.
+
         Returns
         ----------
         table:np.ndarray (2d), pd.Dateframe
 
         """
-        bianhao = np.arange(0, searchspace.shape[0])
+        if flexibility is None:
+            flexibility = np.array(np.zeros((y.shape[1], 1)))
+        else:
+            warnings.warn(
+                "``Flexibility`` means reduction of y boundary, Please use it if you know what you are doing.")
+            flexibility = np.array(flexibility).reshape(-1, 1)
 
-        self.CalculateEi(y, meanandstd_all, predict_y_all, sign=sign)
+        bianhao = np.arange(0, predict_y_all.shape[0]).reshape(-1, 1)
+
+        if searchspace is None:
+            searchspace = np.arange(0, predict_y_all.shape[0]).reshape(-1, 1)
+
+        if meanandstd_all is None:
+            meanandstd_all = self.get_meanandstd_all(predict_y_all)
+
+        self.CalculateEi(y, meanandstd_all, predict_y_all, sign=sign, flexibility=flexibility)
+
+        assert not np.all(self.Ei <= 1e-10), "All the Ei (and Pi) score is 0, This is invalid calculation. " \
+                                             "Please try these methods:\n" \
+                                             "1. Improve your model precision, especially near the expected scope for y. " \
+                                             "For example, for max proplem, the point near the maximum y should be accurate by model.\n" \
+                                             "2. Make sure your search space near the training space.\n" \
+                                             "3. If the above methods are still unable to solve, add flexibility to find point by reduction of y boundary. ()\n"
 
         result1 = np.column_stack((bianhao, searchspace, *meanandstd_all, self.Pi, self.L, self.Ei))
 
         max_paixu = np.argsort(-result1[:, -1])
+
         if max_paixu.size >= fraction:
             select_number = max_paixu[:int(max_paixu.size / fraction)]
         else:

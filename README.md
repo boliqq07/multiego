@@ -1,19 +1,23 @@
 # Multiply EGO
+
 EGO (Efficient global optimization) and multiply target EGO method.
 
 References:
-    Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
-    Global Optim. 13, 455–492 (1998)
+Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J. Global
+Optim. 13, 455–492 (1998)
 
 [![Python Versions](https://img.shields.io/pypi/pyversions/multiego.svg)](https://pypi.org/project/multiego/)
 [![Version](https://img.shields.io/github/tag/MGEdata/multiego.svg)](https://github.com/MGEdata/multiego/releases/latest)
 ![pypi Versions](https://badge.fury.io/py/multiego.svg)
 
 # Install
+
 ```bash
 pip install multiego
 ```
+
 # usage
+
 ```bash
 if __name__ == "__main__":
     from sklearn.datasets import load_boston
@@ -41,7 +45,7 @@ if __name__ == "__main__":
 
     re = me.egosearch()
 ```
+
 link
 -----------
-More examples can be found in test.
-More powerful can be found  [mipego](https://github.com/wangronin/MIP-EGO)
+More examples can be found in test. More powerful can be found  [mipego](https://github.com/wangronin/MIP-EGO)

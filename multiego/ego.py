@@ -11,6 +11,7 @@ import sklearn
 import sklearn.utils
 from mgetool.tool import parallelize
 from sklearn.utils import check_array
+
 from multiego.base_ego import BaseEgo
 
 
@@ -97,6 +98,7 @@ class Ego(BaseEgo):
         n_jobs: int
             Parallelize number.
         """
+        super(Ego, self).__init__()
 
         self.n_jobs = n_jobs
         self.searchspace = searchspace
@@ -106,8 +108,8 @@ class Ego(BaseEgo):
         self.meanandstd_all = []
         self.predict_y_all = []
         self.number = number
-        self.rank = self.egosearch
         self.mean_std = None
+        self.rank=self.egosearch
 
     def fit(self, searchspace=None, X=None, y=None, *args):
         """
@@ -149,28 +151,29 @@ class Ego(BaseEgo):
             predict_data.ravel()
             return predict_data
 
-        predict_dataj = parallelize(n_jobs=njobs, func=fit_parllize, iterable=range(self.number))
-        predict_dataj = np.array(predict_dataj).T
+        predict_y = parallelize(n_jobs=njobs, func=fit_parllize, iterable=range(self.number))
+        predict_y = np.array(predict_y).T
 
-        self.predict_dataj = predict_dataj
+        self.predict_y = predict_y
 
         self.meanandstd()
 
-    def meanandstd(self, predict_dataj=None):
+    def meanandstd(self, predict_y=None):
         """calculate meanandstd"""
-        if predict_dataj is not None:
-            self.predict_dataj = predict_dataj
-        if not hasattr(self, "predict_dataj"):
+        if predict_y is not None:
+            self.predict_y = predict_y
+        if not hasattr(self, "predict_y"):
             raise NotImplemented("Please fit first")
-        if self.predict_dataj is None:
+        if self.predict_y is None:
             raise NotImplemented("Please fit first")
 
-        mean_std = super().meanandstd(self.predict_dataj)
+        mean_std = super().meanandstd(self.predict_y)
 
         self.mean_std = mean_std
         return self.mean_std
 
-    def egosearch(self, searchspace=None,  mean_std=None, rankway="ego",return_type="pd", reverse=False, y=None):
+    def egosearch(self, searchspace=None, mean_std=None, rankway="ego", return_type="pd", flexibility=0, y=None,
+                  fraction=1000):
         """
         Result is 2 dimentions array
         1st column = sequence number,2nd part = your searchspace,3rd part = mean,std,ego,kg,maxp,sequentially.
@@ -179,8 +182,6 @@ class Ego(BaseEgo):
         ----------
         y: np.ndarray of shape (n_sample_true, 1)
             y data (1D).
-        reverse:bool
-            sort method.
         searchspace : np.ndarray of shape (n_sample_pre, n_feature)
             search space
             ["ego","kg","maxp","No"]
@@ -191,6 +192,10 @@ class Ego(BaseEgo):
             First column is mean and second is std.
         rankway : str
             ["ego","kg","maxp","No"]
+        fraction:int
+            choice top n_sample/fraction.
+        flexibility:float
+            Flexibility to calculate EI, the bigger flexibility, the more search space Ei >0.
         """
 
         y = self.y if y is None else y
@@ -200,8 +205,10 @@ class Ego(BaseEgo):
         if mean_std is None:
             self.fit()
             mean_std = self.mean_std
-        return super().egosearch(y=y, searchspace=searchspace, mean_std=mean_std, rankway=rankway, 
-                                 return_type=return_type,reverse=reverse)
+
+        return super().egosearch(y=y, searchspace=searchspace, mean_std=mean_std, rankway=rankway,
+                                 return_type=return_type, flexibility=flexibility, fraction=fraction)
+
 
 if __name__ == "__main__":
     from sklearn.datasets import load_boston
