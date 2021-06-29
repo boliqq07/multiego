@@ -16,7 +16,7 @@ Optim. 13, 455–492 (1998)
 pip install multiego
 ```
 
-# usage
+# Usage
 
 ```bash
 if __name__ == "__main__":
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     from sklearn.svm import SVR
 
     #####model1#####
-    model = SVR() #good model with optimized prarmeters for special features
+    model = SVR() #pre-trained good model with optimized prarmeters for special features
     ###
 
     X, y = load_boston(return_X_y=True)
@@ -48,4 +48,6 @@ if __name__ == "__main__":
 
 link
 -----------
-More examples can be found in test. More powerful can be found  [mipego](https://github.com/wangronin/MIP-EGO)
+More examples can be found in [test](https://github.com/MGEdata/multiego/tree/master/test). 
+
+More powerful can be found  [mipego](https://github.com/wangronin/MIP-EGO)

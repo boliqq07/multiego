@@ -227,6 +227,8 @@ class MultiplyEgo(BaseMultiplyEgo):
 
         if hasattr(self, 'mean_std_all') and hasattr(self, 'predict_y_all'):
             pass
+        elif hasattr(self, 'predict_y_all'):
+            self.mean_std_all = self.get_meanandstd_all(self.predict_y_all)
         else:
             self.fit()
 

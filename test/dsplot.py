@@ -22,13 +22,9 @@ if __name__ == "__main__":
     from sklearn.model_selection import GridSearchCV
     from sklearn.svm import SVR
 
-    #####model1#####
-    ###
-
     #####model2#####
     parameters = {'C': [1, 10]}
     model2 = GridSearchCV(SVR(), parameters)
-
 
     me = BaseMultiplyEgo()
 
@@ -43,4 +39,4 @@ if __name__ == "__main__":
     yall = np.random.random(size=(200,1, 2))
     yall = yall+np.random.random(size=(200,  1000 , 2))/20
 
-    re = me.rank(y=y,predict_y_all=yall , fraction=1500, flexibility=None)
+    re = me.rank(y=y,predict_y_all=yall)

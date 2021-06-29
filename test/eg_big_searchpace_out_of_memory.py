@@ -4,6 +4,7 @@
 # @Email   : 986798607@qq.com
 # @Software: PyCharm
 # @License: BSD 3-Clause
+from multiego.base_ego import BaseEgo
 from tqdm import tqdm
 
 if __name__ == "__main__":
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     parameters = {'C': [0.1, 1, 10]}
     model = GridSearchCV(SVR(), parameters)
     ###
+    # 模型应当提前调整好参数
 
     X, y = load_boston(return_X_y=True)
     X = X[:, :5]  # (简化计算，示意)
@@ -50,5 +52,5 @@ if __name__ == "__main__":
 
     ms = np.concatenate(ms, axis=0)
 
-    me = Ego(regclf=model, searchspace=searchspace, X=X, y=y)  # 没什么用，只是需要全searchspace，最后的表格能对齐
-    re = me.egosearch(mean_std=ms)  # 3 . 用合并的均值方差算EI
+    me = BaseEgo()
+    re = me.egosearch(y=y,mean_std=ms,flexibility=10)  # 3 . 用合并的均值方差算EI
