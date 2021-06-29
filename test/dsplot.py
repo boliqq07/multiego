@@ -32,11 +32,13 @@ if __name__ == "__main__":
 
     np.random.seed(0)
 
-    y=np.random.random(size=(100,2))
+    n=3
+
+    y=np.random.random(size=(100,n))
 
     me.pareto_front_point(y,sign=None)
 
-    yall = np.random.random(size=(200,1, 2))
-    yall = yall+np.random.random(size=(200,  1000 , 2))/20
+    yall = np.random.random(size=(200,1, n))
+    yall = yall+np.random.random(size=(200,  1000 , n))/20
 
     re = me.rank(y=y,predict_y_all=yall)

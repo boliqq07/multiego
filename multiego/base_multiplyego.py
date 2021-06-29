@@ -6,6 +6,7 @@ There are no restrictions on the type of X and model.
 
 """
 import warnings
+from itertools import chain, combinations
 
 import numpy as np
 import pandas as pd
@@ -151,13 +152,21 @@ class BaseMultiplyEgo:
         For the front, the steps can go down or up, we add up to get tighter requirements.
         """
         # max problem
+        if fp.shape[0] == 1:
+            raise NotImplemented("For single problem, we dont implement up-pareto front face methods.")
         if fp.shape[0] == 2:
             fp_index = np.argsort(fp[0, :])
             fp = fp[:, fp_index]
             new_fp = np.vstack((fp[0, :][1:], fp[1, :][:-1]))
 
         else:
-            raise NotImplemented("For multi problem more than 2, we dont implemente up-pareto front face methods.")
+            # nps= []
+            # for coi in combinations(range(fp.shape[1]),fp.shape[0]):
+            #     new_point = fp[:,coi]
+            #     nps.append(np.max(new_point,axis=1))
+            # nps=np.array(nps)
+            # new_fp = self.pareto_front_point(nps)
+            raise NotImplemented("For multi problem more than 2, we dont implemente up-pareto front face methods. please set ``up = False``")
 
         return new_fp
 

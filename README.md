@@ -46,6 +46,26 @@ if __name__ == "__main__":
     re = me.egosearch()
 ```
 
+Introduction
+-------------
+[**multiego.ego.Ego**](https://github.com/MGEdata/multiego/blob/master/multiego/ego.py) 
+
+For `sklean-type` single model.
+
+[**multiego.base_ego.BaseEgo**](https://github.com/MGEdata/multiego/blob/master/multiego/base_ego.py)
+
+1. For any user-defined  single model, just need offer mean and std of search space.
+2. For  big search space out of memory , just need offer mean and std of search space.
+
+[**multiego.multiplyego.MultiEgo**](https://github.com/MGEdata/multiego/blob/master/multiego/multiplyego.py)
+
+For `sklean-type` models.
+
+[**multiego.base_multiplyego.BaseMultiEgo**](https://github.com/MGEdata/multiego/blob/master/multiego/base_multiplyego.py) 
+
+1. For any user-defined models, just need offer predict_y of search space.
+2. For  big search space out of memory, just need offer predict_y of search space.
+
 link
 -----------
 More examples can be found in [test](https://github.com/MGEdata/multiego/tree/master/test).
