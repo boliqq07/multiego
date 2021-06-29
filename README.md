@@ -48,6 +48,6 @@ if __name__ == "__main__":
 
 link
 -----------
-More examples can be found in [test](https://github.com/MGEdata/multiego/tree/master/test). 
+More examples can be found in [test](https://github.com/MGEdata/multiego/tree/master/test).
 
 More powerful can be found  [mipego](https://github.com/wangronin/MIP-EGO)

@@ -4,9 +4,6 @@
 This is one general method to calculate Efficient global optimization with multiple target ,
 There are no restrictions on the type of X and model.
 
-Notes
------
-    The mean and std should calculated by yourself.
 """
 import warnings
 
@@ -47,6 +44,19 @@ class BaseMultiplyEgo:
     References:
         Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
         Global Optim. 13, 455–492 (1998)
+
+    Attributes
+    ------------
+    front_point: np.ndarray
+        front_point.
+    front_point_index: np.ndarray
+        front_point index in x.
+    Ei: np.ndarray
+        Ei
+    Pi: np.ndarray
+        Pi
+    L: np.ndarray
+        Pi
     """
 
     def __init__(self, n_jobs=2, up=True):

@@ -9,9 +9,6 @@
 """This is one general method to calculate Efficient global optimization,
 This one is with no restrictions on the type of X and model.
 
-Notes
------
-    The mean and std should calculated by yourself.
 """
 import warnings
 

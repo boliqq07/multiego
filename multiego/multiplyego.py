@@ -67,6 +67,22 @@ class MultiplyEgo(BaseMultiplyEgo):
         >>> select_number = me.rank()
         >>> result = me.result
 
+    Attributes
+    ------------
+    mean_std_all: np.ndarray
+        mean and std.
+    predict_y_all: np.ndarray
+        predict_y.
+    front_point: np.ndarray
+        front_point.
+    front_point_index: np.ndarray
+        front_point index in x.
+    Ei: np.ndarray
+        Ei
+    Pi: np.ndarray
+        Pi
+    L: np.ndarray
+        Pi
     """
 
     def __init__(self, regclf, searchspace, X, y, number=1000, feature_slice=None, n_jobs=2, up=True):

@@ -70,6 +70,13 @@ class Ego(BaseEgo):
         >>> me = Ego(searchspace, X, y, 500, SVR(), n_jobs=8)
         >>> result = me.rank()
 
+    Attributes
+    ------------
+    mean_std: np.ndarray
+        mean and std
+    predict_y: np.ndarray
+        predict_y
+
     Notes
     ------
         Result is 2 dimentions array
