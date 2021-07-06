@@ -60,7 +60,7 @@ class BaseMultiplyEgo:
         Pi
     """
 
-    def __init__(self, n_jobs=2, up=True):
+    def __init__(self, n_jobs=2, up=True, strategy="min"):
         """
 
         Parameters
@@ -74,6 +74,7 @@ class BaseMultiplyEgo:
         """
 
         self.n_jobs = n_jobs
+        self.strategy = strategy
         self.rank = self.egosearch
         self.up = up
 
@@ -121,10 +122,12 @@ class BaseMultiplyEgo:
         dmin = np.array(alll)
 
         dmin2 = np.min(np.abs(dmin), axis=0)
-
-        dmin3 = np.min(dmin2, axis=1)
-
-        # dmin3 = np.sqrt(np.sum(dmin2**2,axis=1)) # another method.
+        if self.strategy == "min":
+            dmin3 = np.min(dmin2, axis=1)
+        elif self.strategy == "mean":
+            dmin3 = np.sqrt(np.sum(dmin2**2, axis=1)) # another method.
+        else:
+            raise NotImplemented("strategy just accept 'min','mean'.")
 
         dmin3[np.where(dmin3 < 0)[0]] = 0
 

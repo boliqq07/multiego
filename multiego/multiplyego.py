@@ -85,7 +85,7 @@ class MultiplyEgo(BaseMultiplyEgo):
         Pi
     """
 
-    def __init__(self, regclf, searchspace, X, y, number=1000, feature_slice=None, n_jobs=2, up=True):
+    def __init__(self, regclf, searchspace, X, y, number=1000, feature_slice=None, n_jobs=2, up=True, strategy= "min"):
         """
 
         Parameters
@@ -107,7 +107,7 @@ class MultiplyEgo(BaseMultiplyEgo):
         n_jobs:int
             parallelize number.
         """
-        super(MultiplyEgo, self).__init__(n_jobs=n_jobs,up=up)
+        super(MultiplyEgo, self).__init__(n_jobs=n_jobs,up=up,strategy=strategy)
         self.rank = self.egosearch
 
         check_array(X, ensure_2d=True, force_all_finite=True)
