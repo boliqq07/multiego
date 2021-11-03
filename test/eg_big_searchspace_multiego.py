@@ -49,5 +49,5 @@ if __name__ == "__main__":
         pre.append(me.predict_y_all)
 
     pre = np.concatenate(pre, axis=0)
-    me = BaseMultiplyEgo()
+    me = BaseMultiplyEgo(strategy="mean")
     re = me.rank(y=y,predict_y_all=pre,fraction=1000,flexibility=[20,20] )  # 3 . 用合并的均值方差算EI

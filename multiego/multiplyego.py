@@ -40,6 +40,8 @@ class MultiplyEgo(BaseMultiplyEgo):
     """
     Multi-target EGO (Efficient global optimization).
 
+    Keep the all y in same level (MinMaxScaling) !!!
+
     References
     -----------
         Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.

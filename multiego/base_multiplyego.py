@@ -46,6 +46,8 @@ class BaseMultiplyEgo:
         Jones, D. R., Schonlau, M. & Welch, W. J. Efficient global optimization of expensive black-box functions. J.
         Global Optim. 13, 455–492 (1998)
 
+    Keep the all y in same level (MinMaxScaling) !!!
+
     Attributes
     ------------
     front_point: np.ndarray
