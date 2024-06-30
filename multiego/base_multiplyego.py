@@ -196,7 +196,7 @@ class BaseMultiplyEgo:
             return tile
 
         tile_all = batch_parallelize(n_jobs=njobs, func=tile_func, iterable=predict_y_all, batch_size=100)
-        pi = np.sum(1 - np.array(tile_all), axis=1) / predict_y_all.shape[1]
+        pi = 1-np.sum(np.array(tile_all), axis=1) / predict_y_all.shape[1]
 
         self.Pi = pi
 
